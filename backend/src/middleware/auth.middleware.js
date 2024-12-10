@@ -14,7 +14,6 @@ export default  authenticatejwt = async (req, res, next)=>{
       message:"Invalid Token"
     })
   }
-  //this has to be fix
   req.id = decode.userId;
   next();
  }
