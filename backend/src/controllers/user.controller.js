@@ -4,6 +4,7 @@ import { loginUserSchema  } from "../validations/user.login.validation.js";
 import bcrypt from "bcrypt";
 import * as userService from "../services/user.service.js";
 import jwt from 'jsonwebtoken'
+import blacklistTokenModel from "../models/blacklistToken.model.js";
 
 export const registerUser = async (req, res, next) => {
   try {
@@ -32,13 +33,25 @@ export const registerUser = async (req, res, next) => {
     const user = await userService.createUser(userData);
 
     // Generate a token
-    const token = async( user )=>{
-    return await jwt.sign(user._id , process.env.JWT_SECRET ,{expiresIn: '1d'})
-    }
-      
+    const token =  jwt.sign( {id: user._id }, process.env.JWT_SECRET ,{expiresIn: '1d'})
+  
+    //converts a user object(likely a Mongoose document) into a plain JavaScript object.
+    //Why it's needed: Mongoose documents have additional methods and metadata, 
+    //so converting it to a plain object removes those extras, leaving only the data fields.
 
 
-   return res.status(201).json({ user, token , message:'Registration Successful'});
+   res.cookie('token' , token);
+   const { password: _, ...userWithoutPassword} = user.toObject();
+   //converts a user object(likely a Mongoose document) into a plain JavaScript object.
+    //Why it's needed: Mongoose documents have additional methods and metadata, 
+    //so converting it to a plain object removes those extras, leaving only the data fields.
+
+    // it destructures the password from the user object and then asssign the pass to a _ variable
+    // it is generally not used 
+
+    return res.status(201).json({
+      user: userWithoutPassword, token, message: 'Registration Successful'});
+    
   } catch (error) {
 
     //Handle Zod Errors
@@ -83,9 +96,10 @@ export const loginUser = async (req, res, next) => {
       { expiresIn: "1d" }
     );
 
+    res.cookie('token', token);
     // Exclude the password before sending the response
     const { password: _, ...userWithoutPassword } = existingUser.toObject();
-
+    
     return res.status(200).json({
       user: userWithoutPassword,
       token,
@@ -118,4 +132,11 @@ export const getUserProfile = async ( req , res )=>{
   catch(error){
     return res.status(404).json({message :"User not found"})
   }
+}
+
+export const logoutUser = async(req , res)=>{
+  const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+  res.clearCookie('token');
+  await blacklistTokenModel.create({  token });
+  res.status(200).json({message: 'Logged Out'})
 }
