@@ -7,7 +7,6 @@ const UserLogin = () => {
   const [userData, setUserData] = useState({})
 
   useEffect(()=>{
-    console.log(userData)
   },[userData])
 
 
@@ -17,7 +16,6 @@ const UserLogin = () => {
       email:email,
       password:password
     })
-    console.log(userData)
     setemail('');
     setPassword('');
   }
